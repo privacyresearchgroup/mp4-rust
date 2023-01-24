@@ -1,0 +1,9 @@
+[package]
+name = "mp4-fuzz-target"
+version = "0.1.0"
+edition = "2018"
+license = "MIT"
+
+[dependencies]
+afl = "0.12"
+mp4 = { path = ".." }
