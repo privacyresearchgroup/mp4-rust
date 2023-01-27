@@ -133,6 +133,29 @@ cargo docs
 
 View at `target/doc/mp4/index.html`
 
+#### Fuzz
+
+Run afl++ to find invalid inputs that can trigger crashes.
+
+```
+cargo install afl
+cd fuzz
+cargo afl build
+cargo afl fuzz -i in -o out target/debug/mp4-fuzz-target
+```
+
+Fuzzing is computationally expensive; it's recommended to fuzz on a machine with plenty of resources.
+
+See the [Rust Fuzz Book](https://rust-fuzz.github.io/book/afl.html) and the [afl++ documentation](https://aflplus.plus/docs/fuzzing_in_depth) for more information.
+
+afl++ needs at least one example of a valid mp4 file in the `fuzz/in` directory to use as a starting point. A simple video is included, but you can add others or replace it if you wish. Each file should be 10 MB or less.
+
+The included video was generated with ffmpeg; you can use ffmpeg instead of/in addition to capturing videos with a camera:
+
+```
+ffmpeg -f lavfi -t 5 -i color=c=#000000:s=1920x1080 -f lavfi -t 5 -i anullsrc=channel_layout=stereo:sample_rate=44100 -c:v libx264 -tune stillimage -pix_fmt yuv420p in/blank_5s.mp4
+```
+
 ## Web Assembly
 See the [mp4-inspector](https://github.com/alfg/mp4-inspector) project as a reference for using this library in Javascript via Web Assembly.
 
