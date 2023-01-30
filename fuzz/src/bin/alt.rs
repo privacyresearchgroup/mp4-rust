@@ -1,3 +1,4 @@
+use std::convert::TryInto;
 use std::fs::File;
 
 use mp4::Mp4Reader;
