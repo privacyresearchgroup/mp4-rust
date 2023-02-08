@@ -49,6 +49,7 @@ impl<R: Read + Seek> ReadBox<&mut R> for DinfBox {
             // Get box header.
             let header = BoxHeader::read(reader)?;
             let BoxHeader { name, size: s } = header;
+            let s = s.to_exact_size(reader)?;
 
             match name {
                 BoxType::DrefBox => {
@@ -156,6 +157,7 @@ impl<R: Read + Seek> ReadBox<&mut R> for DrefBox {
             // Get box header.
             let header = BoxHeader::read(reader)?;
             let BoxHeader { name, size: s } = header;
+            let s = s.to_exact_size(reader)?;
 
             match name {
                 BoxType::UrlBox => {

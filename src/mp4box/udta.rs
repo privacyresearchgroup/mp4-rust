@@ -55,6 +55,7 @@ impl<R: Read + Seek> ReadBox<&mut R> for UdtaBox {
             // Get box header.
             let header = BoxHeader::read(reader)?;
             let BoxHeader { name, size: s } = header;
+            let s = s.to_exact_size(reader)?;
 
             match name {
                 BoxType::MetaBox => {
@@ -104,9 +105,9 @@ mod tests {
         let mut reader = Cursor::new(&buf);
         let header = BoxHeader::read(&mut reader).unwrap();
         assert_eq!(header.name, BoxType::UdtaBox);
-        assert_eq!(header.size, src_box.box_size());
+        assert_eq!(header.size.unwrap_explicit(), src_box.box_size());
 
-        let dst_box = UdtaBox::read_box(&mut reader, header.size).unwrap();
+        let dst_box = UdtaBox::read_box(&mut reader, header.size.unwrap_explicit()).unwrap();
         assert_eq!(dst_box, src_box);
     }
 
@@ -123,9 +124,9 @@ mod tests {
         let mut reader = Cursor::new(&buf);
         let header = BoxHeader::read(&mut reader).unwrap();
         assert_eq!(header.name, BoxType::UdtaBox);
-        assert_eq!(header.size, src_box.box_size());
+        assert_eq!(header.size.unwrap_explicit(), src_box.box_size());
 
-        let dst_box = UdtaBox::read_box(&mut reader, header.size).unwrap();
+        let dst_box = UdtaBox::read_box(&mut reader, header.size.unwrap_explicit()).unwrap();
         assert_eq!(dst_box, src_box);
     }
 }

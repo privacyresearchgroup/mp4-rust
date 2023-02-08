@@ -31,11 +31,11 @@ impl<R: Read + Seek> Mp4Reader<R> {
             // Get box header.
             let header = BoxHeader::read(&mut reader)?;
             let BoxHeader { name, size: s } = header;
-
             // Break if size zero BoxHeader, which can result in dead-loop.
-            if s == 0 {
+            if matches!(s, BoxSize::UntilEof) {
                 break;
             }
+            let s = s.to_exact_size(&mut reader)?;
 
             // Match and parse the atom boxes.
             match name {

@@ -93,7 +93,8 @@ impl<R: Read + Seek> ReadBox<&mut R> for MetaBox {
         if hdlr_header.name != BoxType::HdlrBox {
             return Err(Error::BoxNotFound(BoxType::HdlrBox));
         }
-        let hdlr = HdlrBox::read_box(reader, hdlr_header.size)?;
+        let exact_size = hdlr_header.size.to_exact_size(reader)?;
+        let hdlr = HdlrBox::read_box(reader, exact_size)?;
 
         let mut ilst = None;
 
@@ -106,6 +107,7 @@ impl<R: Read + Seek> ReadBox<&mut R> for MetaBox {
                     // Get box header.
                     let header = BoxHeader::read(reader)?;
                     let BoxHeader { name, size: s } = header;
+                    let s = s.to_exact_size(reader)?;
 
                     match name {
                         BoxType::IlstBox => {
@@ -177,9 +179,9 @@ mod tests {
         let mut reader = Cursor::new(&buf);
         let header = BoxHeader::read(&mut reader).unwrap();
         assert_eq!(header.name, BoxType::MetaBox);
-        assert_eq!(header.size, src_box.box_size());
+        assert_eq!(header.size.unwrap_explicit(), src_box.box_size());
 
-        let dst_box = MetaBox::read_box(&mut reader, header.size).unwrap();
+        let dst_box = MetaBox::read_box(&mut reader, header.size.unwrap_explicit()).unwrap();
         assert_eq!(dst_box, src_box);
     }
 
@@ -196,9 +198,9 @@ mod tests {
         let mut reader = Cursor::new(&buf);
         let header = BoxHeader::read(&mut reader).unwrap();
         assert_eq!(header.name, BoxType::MetaBox);
-        assert_eq!(header.size, src_box.box_size());
+        assert_eq!(header.size.unwrap_explicit(), src_box.box_size());
 
-        let dst_box = MetaBox::read_box(&mut reader, header.size).unwrap();
+        let dst_box = MetaBox::read_box(&mut reader, header.size.unwrap_explicit()).unwrap();
         assert_eq!(dst_box, src_box);
     }
 
@@ -221,9 +223,9 @@ mod tests {
         let mut reader = Cursor::new(&buf);
         let header = BoxHeader::read(&mut reader).unwrap();
         assert_eq!(header.name, BoxType::MetaBox);
-        assert_eq!(header.size, src_box.box_size());
+        assert_eq!(header.size.unwrap_explicit(), src_box.box_size());
 
-        let dst_box = MetaBox::read_box(&mut reader, header.size).unwrap();
+        let dst_box = MetaBox::read_box(&mut reader, header.size.unwrap_explicit()).unwrap();
         assert_eq!(dst_box, src_box);
     }
 }

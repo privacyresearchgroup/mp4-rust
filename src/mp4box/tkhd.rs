@@ -286,9 +286,9 @@ mod tests {
         let mut reader = Cursor::new(&buf);
         let header = BoxHeader::read(&mut reader).unwrap();
         assert_eq!(header.name, BoxType::TkhdBox);
-        assert_eq!(src_box.box_size(), header.size);
+        assert_eq!(src_box.box_size(), header.size.unwrap_explicit());
 
-        let dst_box = TkhdBox::read_box(&mut reader, header.size).unwrap();
+        let dst_box = TkhdBox::read_box(&mut reader, header.size.unwrap_explicit()).unwrap();
         assert_eq!(src_box, dst_box);
     }
 
@@ -315,9 +315,9 @@ mod tests {
         let mut reader = Cursor::new(&buf);
         let header = BoxHeader::read(&mut reader).unwrap();
         assert_eq!(header.name, BoxType::TkhdBox);
-        assert_eq!(src_box.box_size(), header.size);
+        assert_eq!(src_box.box_size(), header.size.unwrap_explicit());
 
-        let dst_box = TkhdBox::read_box(&mut reader, header.size).unwrap();
+        let dst_box = TkhdBox::read_box(&mut reader, header.size.unwrap_explicit()).unwrap();
         assert_eq!(src_box, dst_box);
     }
 }

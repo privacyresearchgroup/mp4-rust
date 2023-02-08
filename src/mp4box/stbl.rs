@@ -92,6 +92,7 @@ impl<R: Read + Seek> ReadBox<&mut R> for StblBox {
             // Get box header.
             let header = BoxHeader::read(reader)?;
             let BoxHeader { name, size: s } = header;
+            let s = s.to_exact_size(reader)?;
 
             match name {
                 BoxType::StsdBox => {

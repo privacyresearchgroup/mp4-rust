@@ -121,7 +121,8 @@ impl<R: Read + Seek> ReadBox<&mut R> for Vp09Box {
 
         let vpcc = {
             let header = BoxHeader::read(reader)?;
-            VpccBox::read_box(reader, header.size)?
+            let size = header.size.to_exact_size(reader)?;
+            VpccBox::read_box(reader, size)?
         };
 
         skip_bytes_to(reader, start + size)?;
@@ -192,9 +193,9 @@ mod tests {
         let mut reader = Cursor::new(&buf);
         let header = BoxHeader::read(&mut reader).unwrap();
         assert_eq!(header.name, BoxType::Vp09Box);
-        assert_eq!(src_box.box_size(), header.size);
+        assert_eq!(src_box.box_size(), header.size.unwrap_explicit());
 
-        let dst_box = Vp09Box::read_box(&mut reader, header.size).unwrap();
+        let dst_box = Vp09Box::read_box(&mut reader, header.size.unwrap_explicit()).unwrap();
         assert_eq!(src_box, dst_box);
     }
 }

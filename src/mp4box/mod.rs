@@ -57,7 +57,7 @@
 //!
 
 use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
-use std::convert::TryInto;
+use std::convert::{TryFrom, TryInto};
 use std::io::{Read, Seek, SeekFrom, Write};
 
 use crate::*;
@@ -219,11 +219,16 @@ pub trait WriteBox<T>: Sized {
 #[derive(Debug, Clone, Copy)]
 pub struct BoxHeader {
     pub name: BoxType,
-    pub size: u64,
+    pub size: BoxSize,
 }
 
 impl BoxHeader {
     pub fn new(name: BoxType, size: u64) -> Self {
+        let size = if size == 0 {
+            BoxSize::UntilEof
+        } else {
+            BoxSize::Explicit(size)
+        };
         Self { name, size }
     }
 
@@ -253,29 +258,69 @@ impl BoxHeader {
                 // of the box data. Disallow `largesize < 16`, or else a largesize of 8 will result in a BoxHeader::size
                 // of 0, incorrectly indicating that the box data extends to the end of the stream.
                 size: match largesize {
-                    0 => 0,
+                    0 => BoxSize::UntilEof,
                     1..=15 => return Err(Error::InvalidData("64-bit box size too small")),
-                    16..=u64::MAX => largesize - 8,
+                    16..=u64::MAX => BoxSize::Explicit(largesize - 8),
                 },
             })
         } else {
             Ok(BoxHeader {
                 name: BoxType::from(typ),
-                size: size as u64,
+                size: match size {
+                    0 => BoxSize::UntilEof,
+                    _ => BoxSize::Explicit(size.into()),
+                },
             })
         }
     }
 
     pub fn write<W: Write>(&self, writer: &mut W) -> Result<u64> {
-        if self.size > u32::MAX as u64 {
-            writer.write_u32::<BigEndian>(1)?;
-            writer.write_u32::<BigEndian>(self.name.into())?;
-            writer.write_u64::<BigEndian>(self.size)?;
-            Ok(16)
-        } else {
-            writer.write_u32::<BigEndian>(self.size as u32)?;
-            writer.write_u32::<BigEndian>(self.name.into())?;
-            Ok(8)
+        let size = match self.size {
+            BoxSize::Explicit(size) => size,
+            BoxSize::UntilEof => 0,
+        };
+        match u32::try_from(size) {
+            Ok(size) => {
+                writer.write_u32::<BigEndian>(size)?;
+                writer.write_u32::<BigEndian>(self.name.into())?;
+                Ok(8)
+            }
+            Err(_) => {
+                writer.write_u32::<BigEndian>(1)?;
+                writer.write_u32::<BigEndian>(self.name.into())?;
+                writer.write_u64::<BigEndian>(size)?;
+                Ok(16)
+            }
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy)]
+pub enum BoxSize {
+    Explicit(u64),
+    UntilEof,
+}
+
+impl BoxSize {
+    pub fn to_exact_size<S: Seek>(self, seeker: &mut S) -> Result<u64> {
+        match self {
+            BoxSize::Explicit(size) => Ok(size),
+            BoxSize::UntilEof => {
+                let position = seeker.seek(SeekFrom::Current(0))?;
+                let len = seeker.seek(SeekFrom::End(0))?;
+                seeker.seek(SeekFrom::Start(position))?;
+                Ok(len)
+            }
+        }
+    }
+
+    #[track_caller]
+    pub fn unwrap_explicit(self) -> u64 {
+        match self {
+            BoxSize::Explicit(size) => size,
+            BoxSize::UntilEof => {
+                panic!("called `BoxSize::unwrap_explicit()` on a non-`Explicit` value")
+            }
         }
     }
 }
@@ -389,6 +434,12 @@ mod tests {
     #[test]
     fn test_valid_largesize() {
         let header = BoxHeader::read(&mut &[0, 0, 0, 1, 1, 2, 3, 4, 0, 0, 0, 0, 0, 0, 0, 16][..]);
-        assert!(matches!(header, Ok(BoxHeader { size: 8, .. })));
+        assert!(matches!(
+            header,
+            Ok(BoxHeader {
+                size: BoxSize::Explicit(8),
+                ..
+            })
+        ));
     }
 }
