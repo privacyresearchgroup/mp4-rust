@@ -224,6 +224,9 @@ pub struct BoxHeader {
 
 impl BoxHeader {
     pub fn new(name: BoxType, size: u64) -> Self {
+        if size > 0 && size < HEADER_SIZE {
+            panic!("tried to construct a BoxHeader with an impossible box size");
+        }
         let size = if size == 0 {
             BoxSize::UntilEof
         } else {
